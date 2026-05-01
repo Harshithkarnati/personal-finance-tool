@@ -1,25 +1,47 @@
 import os
 from pathlib import Path
+
 import dj_database_url
 
 BASE_DIR = Path(__file__).resolve().parent.parent
 
-# ==============================
-# 🔐 SECURITY / ENV SETTINGS
-# ==============================
+
+def env_bool(name: str, default: bool = False) -> bool:
+    value = os.getenv(name)
+    if value is None:
+        return default
+    return value.strip().lower() in {"1", "true", "yes", "on"}
+
+
+def env_list(name: str) -> list[str]:
+    value = os.getenv(name, "")
+    if not value:
+        return []
+    return [item.strip() for item in value.split(",") if item.strip()]
+
+
+def normalize_host(value: str) -> str:
+    value = value.strip()
+    if value.startswith("http://"):
+        value = value[len("http://") :]
+    if value.startswith("https://"):
+        value = value[len("https://") :]
+    return value.split("/")[0]
+
+
+def normalize_origin(value: str) -> str:
+    value = value.strip()
+    if not value:
+        return value
+    if value.startswith("http://") or value.startswith("https://"):
+        return value
+    return f"https://{value}"
+
+
 SECRET_KEY = os.getenv("SECRET_KEY", "django-insecure-expense-tracker")
+DEBUG = env_bool("DEBUG", False)
+ALLOWED_HOSTS = [normalize_host(value) for value in env_list("ALLOWED_HOSTS")]
 
-DEBUG = os.getenv("DEBUG", "False") == "True"
-
-ALLOWED_HOSTS = (
-    os.getenv("ALLOWED_HOSTS").split(",")
-    if os.getenv("ALLOWED_HOSTS")
-    else []
-)
-
-# ==============================
-# 📦 INSTALLED APPS
-# ==============================
 INSTALLED_APPS = [
     "django.contrib.admin",
     "django.contrib.auth",
@@ -31,13 +53,10 @@ INSTALLED_APPS = [
     "expenses",
 ]
 
-# ==============================
-# ⚙️ MIDDLEWARE (ORDER MATTERS)
-# ==============================
 MIDDLEWARE = [
     "django.middleware.security.SecurityMiddleware",
-    "corsheaders.middleware.CorsMiddleware",   # ✅ FIXED POSITION
     "whitenoise.middleware.WhiteNoiseMiddleware",
+    "corsheaders.middleware.CorsMiddleware",
     "django.contrib.sessions.middleware.SessionMiddleware",
     "django.middleware.common.CommonMiddleware",
     "django.middleware.csrf.CsrfViewMiddleware",
@@ -46,9 +65,6 @@ MIDDLEWARE = [
     "django.middleware.clickjacking.XFrameOptionsMiddleware",
 ]
 
-# ==============================
-# 🌐 URL CONFIG
-# ==============================
 ROOT_URLCONF = "expense_tracker.urls"
 
 TEMPLATES = [
@@ -69,17 +85,12 @@ TEMPLATES = [
 WSGI_APPLICATION = "expense_tracker.wsgi.application"
 ASGI_APPLICATION = "expense_tracker.asgi.application"
 
-# ==============================
-# 🗄️ DATABASE (Render PostgreSQL)
-# ==============================
 DATABASE_URL = os.getenv("DATABASE_URL")
-
 if DATABASE_URL:
     DATABASES = {
         "default": dj_database_url.parse(DATABASE_URL, conn_max_age=600)
     }
 else:
-    # Local fallback
     DATABASES = {
         "default": {
             "ENGINE": "django.db.backends.sqlite3",
@@ -87,56 +98,24 @@ else:
         }
     }
 
-# ==============================
-# 🔐 AUTH
-# ==============================
 AUTH_PASSWORD_VALIDATORS = []
 
-# ==============================
-# 🌍 INTERNATIONALIZATION
-# ==============================
 LANGUAGE_CODE = "en-us"
 TIME_ZONE = "UTC"
 USE_I18N = True
 USE_TZ = True
 
-# ==============================
-# 📁 STATIC FILES (WhiteNoise)
-# ==============================
 STATIC_URL = "static/"
 STATIC_ROOT = BASE_DIR / "staticfiles"
 STATICFILES_STORAGE = "whitenoise.storage.CompressedManifestStaticFilesStorage"
 
-# ==============================
-# 🔗 CORS SETTINGS
-# ==============================
-CORS_ALLOWED_ORIGINS = (
-    os.getenv("CORS_ALLOWED_ORIGINS").split(",")
-    if os.getenv("CORS_ALLOWED_ORIGINS")
-    else []
-)
+CORS_ALLOWED_ORIGINS = [normalize_origin(value) for value in env_list("CORS_ALLOWED_ORIGINS")]
+CORS_ALLOW_ALL_ORIGINS = env_bool("CORS_ALLOW_ALL_ORIGINS", False)
+CORS_ALLOW_CREDENTIALS = env_bool("CORS_ALLOW_CREDENTIALS", False)
+CSRF_TRUSTED_ORIGINS = [normalize_origin(value) for value in env_list("CSRF_TRUSTED_ORIGINS")]
 
-# 🚨 TEMPORARY (for debugging only)
-# Uncomment if CORS still fails
-# CORS_ALLOW_ALL_ORIGINS = True
+SESSION_COOKIE_SECURE = env_bool("SESSION_COOKIE_SECURE", True)
+CSRF_COOKIE_SECURE = env_bool("CSRF_COOKIE_SECURE", True)
+SECURE_SSL_REDIRECT = env_bool("SECURE_SSL_REDIRECT", True)
 
-# ==============================
-# 🔐 CSRF SETTINGS
-# ==============================
-CSRF_TRUSTED_ORIGINS = (
-    os.getenv("CSRF_TRUSTED_ORIGINS").split(",")
-    if os.getenv("CSRF_TRUSTED_ORIGINS")
-    else []
-)
-
-# ==============================
-# 🔒 SECURITY FLAGS
-# ==============================
-SESSION_COOKIE_SECURE = os.getenv("SESSION_COOKIE_SECURE", "True") == "True"
-CSRF_COOKIE_SECURE = os.getenv("CSRF_COOKIE_SECURE", "True") == "True"
-SECURE_SSL_REDIRECT = os.getenv("SECURE_SSL_REDIRECT", "True") == "True"
-
-# ==============================
-# 🔧 DEFAULT FIELD
-# ==============================
 DEFAULT_AUTO_FIELD = "django.db.models.BigAutoField"
