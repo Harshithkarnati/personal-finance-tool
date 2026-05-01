@@ -1,10 +1,11 @@
 import os
 from pathlib import Path
-
 import dj_database_url
+from corsheaders.defaults import default_headers
 
 BASE_DIR = Path(__file__).resolve().parent.parent
 
+# --- Helper Functions ---
 
 def env_bool(name: str, default: bool = False) -> bool:
     value = os.getenv(name)
@@ -12,13 +13,11 @@ def env_bool(name: str, default: bool = False) -> bool:
         return default
     return value.strip().lower() in {"1", "true", "yes", "on"}
 
-
 def env_list(name: str) -> list[str]:
     value = os.getenv(name, "")
     if not value:
         return []
     return [item.strip() for item in value.split(",") if item.strip()]
-
 
 def normalize_host(value: str) -> str:
     value = value.strip()
@@ -28,7 +27,6 @@ def normalize_host(value: str) -> str:
         value = value[len("https://") :]
     return value.split("/")[0]
 
-
 def normalize_origin(value: str) -> str:
     value = value.strip()
     if not value:
@@ -37,6 +35,7 @@ def normalize_origin(value: str) -> str:
         return value
     return f"https://{value}"
 
+# --- Core Settings ---
 
 SECRET_KEY = os.getenv("SECRET_KEY", "django-insecure-expense-tracker")
 DEBUG = env_bool("DEBUG", False)
@@ -54,9 +53,9 @@ INSTALLED_APPS = [
 ]
 
 MIDDLEWARE = [
+    "corsheaders.middleware.CorsMiddleware",  # High priority for preflight checks
     "django.middleware.security.SecurityMiddleware",
     "whitenoise.middleware.WhiteNoiseMiddleware",
-    "corsheaders.middleware.CorsMiddleware",
     "django.contrib.sessions.middleware.SessionMiddleware",
     "django.middleware.common.CommonMiddleware",
     "django.middleware.csrf.CsrfViewMiddleware",
@@ -85,6 +84,8 @@ TEMPLATES = [
 WSGI_APPLICATION = "expense_tracker.wsgi.application"
 ASGI_APPLICATION = "expense_tracker.asgi.application"
 
+# --- Database ---
+
 DATABASE_URL = os.getenv("DATABASE_URL")
 if DATABASE_URL:
     DATABASES = {
@@ -98,21 +99,37 @@ else:
         }
     }
 
+# --- Password Validation ---
+
 AUTH_PASSWORD_VALIDATORS = []
+
+# --- Internationalization ---
 
 LANGUAGE_CODE = "en-us"
 TIME_ZONE = "UTC"
 USE_I18N = True
 USE_TZ = True
 
+# --- Static Files ---
+
 STATIC_URL = "static/"
 STATIC_ROOT = BASE_DIR / "staticfiles"
 STATICFILES_STORAGE = "whitenoise.storage.CompressedManifestStaticFilesStorage"
 
+# --- CORS & CSRF Security ---
+
 CORS_ALLOWED_ORIGINS = [normalize_origin(value) for value in env_list("CORS_ALLOWED_ORIGINS")]
 CORS_ALLOW_ALL_ORIGINS = env_bool("CORS_ALLOW_ALL_ORIGINS", False)
 CORS_ALLOW_CREDENTIALS = env_bool("CORS_ALLOW_CREDENTIALS", False)
+
+# Allow custom headers like idempotency-key
+CORS_ALLOW_HEADERS = list(default_headers) + [
+    "idempotency-key",
+]
+
 CSRF_TRUSTED_ORIGINS = [normalize_origin(value) for value in env_list("CSRF_TRUSTED_ORIGINS")]
+
+# --- HTTPS Security ---
 
 SESSION_COOKIE_SECURE = env_bool("SESSION_COOKIE_SECURE", True)
 CSRF_COOKIE_SECURE = env_bool("CSRF_COOKIE_SECURE", True)
