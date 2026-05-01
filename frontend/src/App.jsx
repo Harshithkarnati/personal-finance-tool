@@ -1,5 +1,7 @@
 import { useEffect, useMemo, useState } from 'react'
 
+const API_BASE = import.meta.env.VITE_API_URL ?? ''
+
 const draftStorageKey = 'expense-form-draft-v1'
 const pendingStorageKey = 'expense-form-pending-v1'
 const currencyFormatter = new Intl.NumberFormat('en-IN', {
@@ -75,7 +77,7 @@ export default function App() {
         }
         params.set('sort', 'date_desc')
 
-        const response = await fetch(`/expenses?${params.toString()}`, {
+        const response = await fetch(`${API_BASE}/expenses?${params.toString()}`, {
           signal: controller.signal,
         })
 
@@ -161,7 +163,7 @@ export default function App() {
     )
 
     try {
-      const response = await fetch('/expenses', {
+      const response = await fetch(`${API_BASE}/expenses`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -197,7 +199,7 @@ export default function App() {
     }
     params.set('sort', 'date_desc')
 
-    const response = await fetch(`/expenses?${params.toString()}`)
+    const response = await fetch(`${API_BASE}/expenses?${params.toString()}`)
     if (!response.ok) {
       throw new Error('Expense saved, but the latest list could not be loaded.')
     }
